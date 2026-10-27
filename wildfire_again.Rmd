@@ -20,10 +20,10 @@ This is an R Markdown document. Markdown is a simple formatting syntax for autho
 When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
 
 ```{r cars}
-data <- read.csv("C:/Users/aeh00/Downloads/InFORM_FireOccurrence_Public_-904755089098175112.csv")
+data <- read.csv("InFORM_FireOccurrence_Public_-904755089098175112.csv")
 #https://data-nifc.opendata.arcgis.com/datasets/60a94840152b4a89bec467a9f052f135_0/explore?filters=eyJQT09TdGF0ZSI6WyJVUy1JRCJdLCJGaXJlRGlzY292ZXJ5RGF0ZVRpbWUiOlsxNDk2MjkzMjAwMDAwLDE3MzAzNTA4MDAwMDBdLCJQT09Db3VudHkiOlsiQWRhIiwiQ2FueW9uIl19&location=16.048663%2C-12.599097%2C1&showTable=true
 
-weather <- read.csv("C:/Users/aeh00/Downloads/4419504.csv")
+weather <- read.csv("4419504.csv")
 #https://www.ncdc.noaa.gov/cdo-web/confirmation
 
 
