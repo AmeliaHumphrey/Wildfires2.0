@@ -1,0 +1,190 @@
+---
+title: "Wildfirepart2hehe"
+author: "Amelia Humphrey"
+date: "2026-10-25"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(dplyr)
+library(tidyr)
+library(tidyverse)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r cars}
+data <- read.csv("C:/Users/aeh00/Downloads/InFORM_FireOccurrence_Public_-904755089098175112.csv")
+#https://data-nifc.opendata.arcgis.com/datasets/60a94840152b4a89bec467a9f052f135_0/explore?filters=eyJQT09TdGF0ZSI6WyJVUy1JRCJdLCJGaXJlRGlzY292ZXJ5RGF0ZVRpbWUiOlsxNDk2MjkzMjAwMDAwLDE3MzAzNTA4MDAwMDBdLCJQT09Db3VudHkiOlsiQWRhIiwiQ2FueW9uIl19&location=16.048663%2C-12.599097%2C1&showTable=true
+
+weather <- read.csv("C:/Users/aeh00/Downloads/4419504.csv")
+#https://www.ncdc.noaa.gov/cdo-web/confirmation
+
+
+nrow(data)
+nrow(weather)
+head(weather)
+head(data)
+
+#cleaning the wildfire data
+
+#only wildfires aka not human started
+wf <- data |> filter(Incident.Type.Category == "WF") |>
+  mutate(DATE = as.Date(parse_date_time(Fire.Discovery.Date.Time, "mdY IMS p")))
+
+#columns that are desired
+wf <- wf |> select(POO.County, POO.State, Incident.Name, Incident.Type.Category, Incident.Size, Initial.Latitude, Initial.Longitude, FireOutDateTime, DATE )
+#filter for jun - oct as that is when wildfire are typically
+wf <- wf |> filter(month(DATE) %in% 6:10)
+#combine multiple fires on the same day
+wf <- wf |> 
+  group_by(DATE) |> 
+  summarise(
+    POO.County = paste(unique(POO.County), collapse = ", "),
+    POO.State = paste(unique(POO.State), collapse = ", "),
+    Incident.Name = paste(Incident.Name, collapse = ", "),
+    Initial.Latitude = paste(unique(Initial.Latitude), collapse = ", "),
+    Initial.Longitude = paste(unique(Initial.Longitude), collapse = ", "),
+    Incident.Type.Category = paste(unique(Incident.Type.Category), collapse = ", "),
+    Incident.Size = paste(unique(Incident.Size), collapse = ", "),
+    FireOutDateTime= paste(unique(FireOutDateTime), collapse = ", "),
+    Number_of_Fires = n(),
+    .groups = "drop"
+  )
+View(wf)
+
+
+#cleaning the weather data
+climate <- weather |> select(-TAVG)
+climate <- climate |> 
+  mutate(DATE = as.Date(DATE))
+head(climate)
+
+#combine the two datasets
+
+combined_data <- climate |> 
+  left_join(wf, by = "DATE")
+combined_data <- combined_data |> 
+  mutate(
+    Number_of_Fires = ifelse(is.na(Number_of_Fires), 0, Number_of_Fires),
+    Fire = ifelse(Number_of_Fires > 0, 1, 0)
+  )
+
+
+view(combined_data)
+
+training <- combined_data |> 
+  filter(format(DATE, "%Y") <= 2021)
+validation <- combined_data |> 
+  filter(format(DATE, "%Y") %in% c("2022", "2023"))
+testing <- combined_data |> 
+  filter(format(DATE, "%Y") == 2024)
+View(training)
+View(testing)
+View(validation)
+
+colnames(training)
+
+
+
+```
+
+```{r}
+#Logistic Regression
+#source: https://www.geeksforgeeks.org/r-language/logistic-regression-in-r-programming/
+
+
+model <- glm(
+  Fire ~ PRCP + AWND + TMIN,
+  data = training,
+  family = binomial()
+)
+
+valid <- predict(model,
+                newdata = validation, 
+                type = "response")
+valid <- ifelse(
+  valid >= 0.5,
+  1,
+  0
+)
+
+#a matrix
+matrix <- table(
+  Actual = validation$Fire,
+  Predicted = valid)
+matrix
+
+accuracy <- mean(valid == validation$Fire) * 100
+accuracy
+
+
+
+
+#trying to improve the model
+model2 <- glm(
+  Fire ~ AWND + PRCP + TMAX + TMIN,
+  data = training,
+  family = binomial()
+)
+summary(model2)
+
+#Validation Step
+
+#response is used to return probabilities
+#probabilties of fires
+valid2 <- predict(model2,
+                newdata = validation, 
+                type = "response")
+valid2 <- ifelse(
+  valid2 >= 0.5,
+  1,
+  0
+)
+
+#a matrix
+matrix2 <- table(
+  Actual = validation$Fire,
+  Predicted = valid)
+matrix2
+
+#accuracy of model2
+accuracy2 <- mean(valid2 == validation$Fire) * 100
+accuracy2
+
+#fire detection based on matric is 95/(95+75) = 55.9%
+
+testing
+test_prob <- predict(
+  model2,
+  newdata = testing,
+  type = "response"
+)
+test_prob <- ifelse(
+  test_prob >= 0.5,
+  1,
+  0
+)
+test_matrix <- table(
+  Actual = testing$Fire,
+  Predicted = test_prob)
+test_matrix
+
+
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
