@@ -11,6 +11,8 @@ knitr::opts_chunk$set(echo = TRUE)
 library(dplyr)
 library(tidyr)
 library(tidyverse)
+library(rpart)
+library(rpart.plot)
 ```
 
 ## R Markdown
@@ -26,11 +28,6 @@ data <- read.csv("InFORM_FireOccurrence_Public_-904755089098175112.csv")
 weather <- read.csv("4419504.csv")
 #https://www.ncdc.noaa.gov/cdo-web/confirmation
 
-
-nrow(data)
-nrow(weather)
-head(weather)
-head(data)
 
 #cleaning the wildfire data
 
@@ -57,7 +54,6 @@ wf <- wf |>
     Number_of_Fires = n(),
     .groups = "drop"
   )
-View(wf)
 
 
 #cleaning the weather data
@@ -78,6 +74,9 @@ combined_data <- combined_data |>
 
 
 view(combined_data)
+combined_data <- combined_data |> 
+  mutate(DATE = as.Date(DATE)) |> 
+  filter(month(DATE) %in% 6:10)
 
 training <- combined_data |> 
   filter(format(DATE, "%Y") <= 2021)
@@ -158,7 +157,7 @@ matrix2
 accuracy2 <- mean(valid2 == validation$Fire) * 100
 accuracy2
 
-#fire detection based on matric is 95/(95+75) = 55.9%
+#68.63%
 
 testing
 test_prob <- predict(
@@ -176,6 +175,7 @@ test_matrix <- table(
   Predicted = test_prob)
 test_matrix
 
+#CHECK THIS TODO
 
 ```
 
@@ -184,7 +184,30 @@ test_matrix
 You can also embed plots, for example:
 
 ```{r pressure, echo=FALSE}
-plot(pressure)
+
+#decision tree
+
+dt <- combined_data |>
+  mutate(DATE = as.Date(DATE)) |> 
+  filter(month(DATE) %in% 6:10) |> 
+  mutate(fire_factors = factor(Fire, levels = c(0,1), labels = c("no_fire", "fire")))
+
+table(month(dt$DATE))
+training_dt <- dt |> 
+  filter(format(DATE, "%Y") <= 2021)
+validation_dt <- dt |> 
+  filter(format(DATE, "%Y") %in% c("2022", "2023"))
+testing_dt <- dt |> 
+  filter(format(DATE, "%Y") == 2024)
+
+decision <- rpart(fire_factors ~ TMAX + TMIN + AWND, data = training_dt, method = "class")
+print(decision)
+
+decision2 <- rpart(fire_factors ~ TMAX + TMIN + AWND + PRCP, data = training_dt, method = "class")
+print(decision2)
+
+
+
 ```
 
 Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
